@@ -46,6 +46,11 @@ from swarm_tminus.tempo import (
 from swarm_tminus.cron import CronParser, next_fire, CronError
 from swarm_tminus.campaign import Campaign, topological_order, CycleError
 from swarm_tminus.matcher import EventMatcher, EventMatch, find_matches
+from swarm_tminus.casting import (
+    CastingRequest, CastingResult, select_model, CASTING_MAP,
+    STRENGTH_SYNONYMS, MAX_POSSIBLE_STRENGTHS,
+    effective_strengths, strength_score,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -60,4 +65,7 @@ __all__ = [
     "CronParser", "next_fire", "CronError",
     "Campaign", "topological_order", "CycleError",
     "EventMatcher", "EventMatch", "find_matches",
+    "CastingRequest", "CastingResult", "select_model", "CASTING_MAP",
+    "STRENGTH_SYNONYMS", "MAX_POSSIBLE_STRENGTHS",
+    "effective_strengths", "strength_score",
 ]
