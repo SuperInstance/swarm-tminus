@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swarm-tminus"
+version = "0.1.0"
+description = "Time-shaped coordination primitives for swarm-anchor: predict-and-confirm, deadlines, rate limiters, BPM clocks, cron, and DAG-ordered campaigns. Stdlib-only Python."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "SuperInstance", email = "[email protected]" },
+]
+keywords = [
+    "swarm", "multi-agent", "t-minus", "countdown", "deadline",
+    "rate-limit", "cron", "bpm", "tempo",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+yaml = ["PyYAML>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/SuperInstance/swarm-tminus"
+Repository = "https://github.com/SuperInstance/swarm-tminus"
+Issues = "https://github.com/SuperInstance/swarm-tminus/issues"
+
+[project.scripts]
+swarm-tminus = "swarm_tminus.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["swarm_tminus*"]
+
+[tool.setuptools.package-data]
+swarm_tminus = ["py.typed"]
+
+[tool.unittest]
+test = ["discover", "tests"]
+verbose = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
