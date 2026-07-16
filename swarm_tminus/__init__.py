@@ -66,7 +66,7 @@ try:
 except ImportError:
     _HAS_HYBRID = False
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = [
     "Predictor", "Prediction", "MessageSavings",
     "ChordProgression", "ii_v_i", "twelve_bar_blues", "chromatic",
