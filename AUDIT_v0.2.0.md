@@ -1,9 +1,13 @@
 # swarm-tminus v0.2.0 — Code Audit Report
 
 **Auditor:** MiniMax-M3 (self-audit, post–subagent failure recovery)  
-**Date:** 2026-07-16  
-**Scope:** All 11 modules + 11 test files (6,215 LoC, 294 tests, all passing)  
-**Repo state at audit start:** commit `201fc62` on `main`
+**Date:** 2026-07-16 (initial audit); updated 2026-07-16 after upstream verification  
+**Scope:** All 11 modules + 11 test files (6,215 LoC, 294 tests at audit time, 301 tests after follow-up fixes)  
+**Repo state at audit start:** commit `201fc62` on `main`  
+**Resolutions:**
+- BUG #1, #2, #3, #4, #5 fixed in **v0.2.1** (commit `756853a`)
+- BUG #6 reclassified as DOC, documented in **v0.2.2** (commit `e4c4e13`)
+- BUG #7 fixed in **v0.2.2** (commit `e4c4e13`)
 
 ---
 
@@ -172,7 +176,7 @@ But the actual `add_edge` does NOT check for cycles — only `add_edge_force` do
 
 ---
 
-### BUG #6 — `cron.py`: AND semantics for DOM+DOW instead of OR (MEDIUM, spec deviation)
+### BUG #6 — `cron.py`: AND semantics for DOM+DOW instead of OR (RESOLVED 2026-07-16)
 
 **Severity:** Medium (deviation from Vixie cron standard; users surprised)  
 **Module:** `swarm_tminus/cron.py`, method `CronParser.matches` (lines ~244-254)
@@ -183,13 +187,15 @@ But the actual `add_edge` does NOT check for cycles — only `add_edge_force` do
 
 This implementation uses AND semantics (all fields must match). Empirically verified: `0 12 1 * 1` (noon on day-1 OR Monday) matches nothing.
 
-**Fix:** When both DOM and DOW are restricted (not `*` / `?`), match if EITHER matches. Otherwise (one or both are `*`) match if BOTH match. Document the behavior in the module docstring either way.
+**Resolution 2026-07-16:** Verified against upstream `t-minus-rs/src/schedule.rs:165-178` — the Rust source ALSO uses AND semantics. The Python port faithfully reproduces the upstream behavior. The standard Vixie cron OR semantics is a convention, not a requirement.
+
+**Final status:** Reclassified as **DOC #4** (documentation gap, not a bug). Module docstring updated in **v0.2.2** to explicitly document AND semantics and link to the upstream source. No code change.
 
 ---
 
-### BUG #7 — `events.py`: deferred blocks FIRE even when quorum met (LOW, design question)
+### BUG #7 — `events.py`: deferred blocks FIRE even when quorum met (RESOLVED 2026-07-16)
 
-**Severity:** Low (likely intentional but surprising)  
+**Severity:** Medium (real porting bug — order of checks contradicts upstream)  
 **Module:** `swarm_tminus/events.py`, method `CountdownEvent.tick` (lines ~95-117)
 
 **Issue:** Current code:
@@ -203,27 +209,27 @@ if self.has_quorum():
     return self.status
 ```
 
-Means: if any subscriber is DEFERRED, the event never FIRES regardless of quorum. This seems wrong — deferred grants grace against MISSED, not against FIRED. A deferred attendee should be RE-ASKED, not block the rest of the swarm.
+Means: if any subscriber is DEFERRED, the event never FIRES regardless of quorum. This contradicts the upstream semantics.
 
-**Test gap:** No test covers "quorum met + deferred attendee" → expected FIRED.
+**Verification 2026-07-16:** Read `t-minus/src/engine.rs:188-208` directly. The Rust engine checks `has_quorum()` FIRST:
 
-**Fix:** Reorder — check quorum first, then deferred-grace:
-
-```python
-if self.has_quorum():
-    self.status = EventStatus.FIRED
-    return self.status
-if self.deferred_count() > 0:
-    self.status = EventStatus.COUNTING
-    return self.status
-if now_unix >= self.fire_at_unix:
-    self.status = EventStatus.MISSED
-else:
-    self.status = EventStatus.COUNTING
-return self.status
+```rust
+if now >= event.fire_time() {
+    if event.has_quorum() {
+        tick.fired.push(event.id);       // ← quorum fires regardless of deferred
+    } else {
+        // Only when quorum is NOT met does deferred grant grace
+        let any_deferred = ...;
+        if !any_deferred {
+            tick.missed.push(event.id);
+        }
+    }
+}
 ```
 
-**Decision needed:** verify against original `t-minus-rs/src/engine.rs:165-189` semantics. If intentional, document explicitly. If not, fix.
+The Python port had the order wrong — it checked deferred first, blocking fire even when quorum was reached. **This was a real port bug.**
+
+**Fix applied in v0.2.2:** Reordered check to match upstream. New regression test `test_quorum_fires_even_with_deferred` covers the case.
 
 ---
 
