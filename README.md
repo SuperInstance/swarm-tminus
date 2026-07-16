@@ -108,6 +108,9 @@ order = camp.topological_order()    # ["step1", "step2"]
 | `cron` | t-minus-rs | 5-field cron parser, no external deps |
 | `campaign` | t-minus | DAG of countdown events with topological order |
 | `matcher` | lau-tminus | Pattern-based event matching with confidence |
+| `casting` | terax-fleet-modules | Casting-call model router (10 curated models, score-based) |
+| `context` | terax-fleet-modules | PLATO tile formatter + fleet fetcher (Promise.allSettled semantics) |
+| `hybrid` | glue | `HybridAnchor` — unified `.swarm/` for swarm-anchor + swarm-tminus |
 
 All modules export a `__repr__` and a small, focused surface. All are file-backed where appropriate.
 
@@ -255,10 +258,10 @@ camp.save(".swarm")
 ## Tests
 
 ```bash
-$ python3 -m unittest discover tests
-......................................................................................................................................................................................................................................
+$ /usr/bin/python3.11 -m unittest discover tests
+......................................................................................................................................................................................................................................................................
 ----------------------------------------------------------------------
-Ran 230 tests in 0.020s
+Ran 294 tests in 0.035s
 
 OK
 ```
@@ -275,6 +278,9 @@ Test breakdown:
 | cron | 24 | tests/test_cron.py |
 | campaign | 18 | tests/test_campaign.py |
 | matcher | 22 | tests/test_matcher.py |
+| casting | 21 | tests/test_casting.py |
+| hybrid | 22 | tests/test_hybrid.py |
+| context | 21 | tests/test_context.py |
 
 ## Source provenance
 
@@ -285,7 +291,7 @@ This package is a clean-room Python re-implementation of primitives from the fol
 - **tminus-music** — predict-and-confirm + chord progressions
 - **lau-tminus** — typed event matching with confidence + energy cost
 - **tick-engine** — BPM-adaptive scheduler
-- **terax-fleet-modules** — *context-and-modeling* (referenced but not yet ported — would be a future addition)
+- **terax-fleet-modules** — *context-and-modeling* (now ported in v0.2.0 as `casting.py` and `context.py`)
 
 The patterns map 1:1; only the language and storage substrate change.
 
