@@ -110,21 +110,22 @@ class CountdownEvent:
     def tick(self, now_unix: float) -> EventStatus:
         """Update status from current time. Returns the (possibly updated) status.
 
-        - SCHEDULED -> COUNTING once fire_at has passed without quorum
-        - SCHEDULED/COUNTING -> FIRED once quorum reached (any time)
-        - SCHEDULED/COUNTING -> MISSED if time passed AND no quorum
+        Order of checks mirrors t-minus/src/engine.rs:188-208:
+            - SCHEDULED/COUNTING -> FIRED if quorum is reached (any time)
+            - SCHEDULED/COUNTING -> COUNTING (held) if any attendee is DEFERRED
+            - SCHEDULED/COUNTING -> MISSED if fire_at passed AND no quorum AND no deferrals
         """
         if self.status in (EventStatus.FIRED, EventStatus.MISSED, EventStatus.CANCELED):
             return self.status
 
-        # A Deferred attendee grants extra time per t-minus engine.rs:165-189 semantics.
-        # We mirror that: if anyone is DEFERRED, do NOT mark missed; leave in COUNTING.
-        if self.deferred_count() > 0:
-            self.status = EventStatus.COUNTING
-            return self.status
-
+        # Quorum fires regardless of deferrals (upstream semantics).
         if self.has_quorum():
             self.status = EventStatus.FIRED
+            return self.status
+
+        # Deferral grants extra time only when quorum is NOT yet met.
+        if self.deferred_count() > 0:
+            self.status = EventStatus.COUNTING
             return self.status
 
         if now_unix >= self.fire_at_unix:

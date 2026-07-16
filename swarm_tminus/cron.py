@@ -1,6 +1,6 @@
 """5-field cron expression parser and next-fire computer.
 
-Supports the standard Vixie-cron field set:
+Supports the Vixie-cron field set:
   *      — any value
   N      — exact
   A,B,C  — list
@@ -8,6 +8,14 @@ Supports the standard Vixie-cron field set:
   */N or A-B/N or A/N  — step (every N starting at A)
 
 Fields are: minute hour day-of-month month day-of-week (Sunday=0).
+
+Matching semantics:
+    All fields are AND-combined: a time matches iff every field matches.
+    NOTE: Standard Vixie cron uses OR semantics when BOTH day-of-month AND
+    day-of-week are restricted (e.g. ``30 4 1,15 * 5`` fires on the 1st/15th
+    OR every Friday). This implementation deliberately uses AND semantics,
+    matching the upstream t-minus-rs/src/schedule.rs:165-178. If you need
+    Vixie-OR semantics, split the expression into two.
 
 Source: t-minus-rs/src/schedule.rs.
 """

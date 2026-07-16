@@ -87,6 +87,23 @@ class TestCountdownEventTick(unittest.TestCase):
         status = e.tick(time.time())
         self.assertEqual(status, EventStatus.COUNTING)
 
+    def test_quorum_fires_even_with_deferred(self):
+        """Regression: quorum must be checked BEFORE deferral grace.
+
+        Mirrors t-minus/src/engine.rs:188-208: an event with quorum AND any
+        deferred attendee should still FIRE (not be held in COUNTING).
+        Previous behavior held it in COUNTING because deferral was checked
+        first.
+        """
+        e = CountdownEvent(name="e", fire_at_unix=time.time() - 60,
+                           quorum_required=2)
+        e.confirm("alice", SubscriberStatus.CONFIRMED)
+        e.confirm("bob", SubscriberStatus.CONFIRMED)
+        e.confirm("carol", SubscriberStatus.DEFERRED)
+        status = e.tick(time.time())
+        self.assertEqual(status, EventStatus.FIRED,
+                         "quorum met should fire even with deferred attendee")
+
     def test_tick_idempotent(self):
         e = CountdownEvent(name="e", fire_at_unix=time.time() - 60)
         e.tick(time.time())
