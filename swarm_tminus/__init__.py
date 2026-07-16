@@ -8,11 +8,11 @@ swarm-anchor.
 
 Predict-and-confirm, deadline cascades, rate limiters with
 backpressure, BPM-adaptive heartbeats, CRON scheduling, and
-DAG-ordered campaigns — all in stdlib Python, all living
+DAG-ordered campaigns - all in stdlib Python, all living
 alongside `.swarm/heartbeat.json` files.
 
-This package imports nothing from swarm-anchor (the dependency
-is by convention, not import), so it can also be used standalone.
+Optional peer dep: `swarm-anchor` (installed separately; adds the
+HybridAnchor glue class for unified .swarm/ shared state).
 
 Usage:
     from swarm_tminus import (
@@ -24,7 +24,11 @@ Usage:
         CronParser, next_fire,
         Campaign, topological_order,
         EventMatcher, EventMatch,
+        CastingRequest, CastingResult, select_model,
+        Tile, format_tiles_as_context, fetch_fleet_context,
     )
+    # Optional, only when swarm-anchor is installed:
+    from swarm_tminus import HybridAnchor, hybrid_summary
 """
 
 from swarm_tminus.predictor import (
@@ -51,8 +55,18 @@ from swarm_tminus.casting import (
     STRENGTH_SYNONYMS, MAX_POSSIBLE_STRENGTHS,
     effective_strengths, strength_score,
 )
+from swarm_tminus.context import (
+    Tile, format_tiles_as_context, fetch_fleet_context,
+    save_tiles, load_tiles, PLATO_URL,
+)
 
-__version__ = "0.1.0"
+# Optional peer dep — HybridAnchor only imports if swarm-anchor exists
+try:
+    from swarm_tminus.hybrid import HybridAnchor, _HAS_SWARM_ANCHOR as _HAS_HYBRID
+except ImportError:
+    _HAS_HYBRID = False
+
+__version__ = "0.2.0"
 __all__ = [
     "Predictor", "Prediction", "MessageSavings",
     "ChordProgression", "ii_v_i", "twelve_bar_blues", "chromatic",
@@ -68,4 +82,6 @@ __all__ = [
     "CastingRequest", "CastingResult", "select_model", "CASTING_MAP",
     "STRENGTH_SYNONYMS", "MAX_POSSIBLE_STRENGTHS",
     "effective_strengths", "strength_score",
-]
+    "Tile", "format_tiles_as_context", "fetch_fleet_context",
+    "save_tiles", "load_tiles", "PLATO_URL",
+] + (["HybridAnchor"] if _HAS_HYBRID else [])
