@@ -111,37 +111,18 @@ def format_tiles_as_context(
     # Sort by confidence, highest first, so truncation drops the weakest.
     ordered = sorted(tiles, key=lambda t: t.confidence, reverse=True)
 
-    lines = ["<fleet-context>"]
+    # Build initial text and check length. Truncate from the bottom if too long.
+    text = _build_tiles_xml(ordered, include_metadata)
+    if len(text) <= max_chars:
+        return text
 
-    current_domains: list[str] = []
-    for tile in ordered:
-        # Open a <room> tag if we haven't yet for this domain.
-        if tile.domain and tile.domain not in current_domains:
-            for prev in current_domains:
-                lines.append(f"  </room>")
-            lines.append(f"  <room>{_xml_escape(tile.domain)}</room>")
-            current_domains.append(tile.domain)
+    # Truncate while preserving header and dropping tiles from the bottom
+    # (lowest-confidence first, since we sorted highest-first).
+    while ordered and len(text) > max_chars:
+        ordered.pop()  # remove lowest-confidence
+        text = _build_tiles_xml(ordered, include_metadata)
 
-        tile_lines = [
-            f"Q: {_xml_escape(tile.question)}",
-            f"A: {_xml_escape(tile.answer)}",
-        ]
-        if include_metadata:
-            meta_parts = [f"confidence: {tile.confidence:.2f}"]
-            if tile.tags:
-                meta_parts.append(f"tags: {', '.join(tile.tags)}")
-            if tile.source:
-                meta_parts.append(f"source: {tile.source}")
-            tile_lines.append(f"  {' | '.join(meta_parts)}")
-        lines.append("  <tile>")
-        lines.extend(f"    {ln}" for ln in tile_lines)
-        lines.append("  </tile>")
-
-    # Close any open <room> tags.
-    for _ in current_domains:
-        lines.append("  </room>")
-
-    lines.append("</fleet-context>")
+    return text
 
     text = "\n".join(lines)
     if len(text) <= max_chars:
@@ -162,16 +143,24 @@ def _xml_escape(s: str) -> str:
              .replace(">", "&gt;"))
 
 
-def lines_rebuild(tiles: list[Tile], include_metadata: bool) -> list[str]:
-    """Internal helper: rebuild the lines for the kept-tiles subset."""
+def _build_tiles_xml(tiles: list[Tile], include_metadata: bool) -> str:
+    """Build the XML text for a list of tiles.
+
+    Used both by ``format_tiles_as_context`` for the initial render and for
+    the truncation path, so the format stays consistent (source field in
+    metadata, balanced room tags, uniform indent).
+
+    Rooms are emitted as inline header markers (``<room>DOMAIN</room>``)
+    before the first tile of each domain — they act as separators, not as
+    content-wrapping tags. This keeps the XML well-formed (balanced tags)
+    without the structural complexity of wrapping tiles inside room tags.
+    """
     lines = ["<fleet-context>"]
-    current_domains: list[str] = []
+    seen_domains: set[str] = set()
     for tile in tiles:
-        if tile.domain and tile.domain not in current_domains:
-            for _ in current_domains:
-                lines.append("  </room>")
+        if tile.domain and tile.domain not in seen_domains:
             lines.append(f"  <room>{_xml_escape(tile.domain)}</room>")
-            current_domains.append(tile.domain)
+            seen_domains.add(tile.domain)
         lines.append("  <tile>")
         lines.append(f"    Q: {_xml_escape(tile.question)}")
         lines.append(f"    A: {_xml_escape(tile.answer)}")
@@ -179,12 +168,12 @@ def lines_rebuild(tiles: list[Tile], include_metadata: bool) -> list[str]:
             meta_parts = [f"confidence: {tile.confidence:.2f}"]
             if tile.tags:
                 meta_parts.append(f"tags: {', '.join(tile.tags)}")
+            if tile.source:
+                meta_parts.append(f"source: {tile.source}")
             lines.append(f"    {' | '.join(meta_parts)}")
         lines.append("  </tile>")
-    for _ in current_domains:
-        lines.append("  </room>")
     lines.append("</fleet-context>")
-    return lines
+    return "\n".join(lines)
 
 
 def fetch_fleet_context(

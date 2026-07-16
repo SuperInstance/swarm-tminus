@@ -166,6 +166,27 @@ class TestDeadlineTree(unittest.TestCase):
         tree = self._build_tree()
         self.assertEqual(tree.cancel("nope"), 0)
 
+    def test_find_after_add_child(self):
+        """Regression: nodes added after tree construction must be findable.
+
+        Lazy re-index on miss: the tree walks its root to find nodes that
+        were attached via ``root.add_child(...)`` after __init__ ran.
+        """
+        root = DeadlineNode(name="root", duration_seconds=10)
+        tree = DeadlineTree(root=root)
+        root.add_child("late", duration_seconds=5)
+        self.assertIsNotNone(tree.find("late"),
+                             "node added after tree construction was not findable")
+
+    def test_cancel_after_add_child(self):
+        """Regression: cancellation by name works for post-construction children."""
+        root = DeadlineNode(name="root", duration_seconds=10)
+        tree = DeadlineTree(root=root)
+        late = root.add_child("late", duration_seconds=5)
+        count = tree.cancel("late")
+        self.assertEqual(count, 1)
+        self.assertEqual(late.status, DeadlineStatus.CANCELLED)
+
     def test_all_nodes(self):
         tree = self._build_tree()
         self.assertEqual(len(tree.all_nodes()), 5)

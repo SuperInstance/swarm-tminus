@@ -169,8 +169,30 @@ class DeadlineTree:
             stack.extend(cur.children)
 
     def find(self, name: str) -> Optional[DeadlineNode]:
-        """Look up a node by name."""
-        return self._index.get(name)
+        """Look up a node by name.
+
+        Uses a lazy re-index on miss: if a node was added to the tree via
+        ``root.add_child(...)`` after the tree was constructed, the index
+        will be stale. We walk the tree to recover the node on miss.
+        """
+        if name in self._index:
+            return self._index[name]
+        # Lazy re-index: walk the tree to find nodes missing from the index.
+        found = self._walk_find(self.root, name)
+        if found is not None:
+            self._index[name] = found
+        return found
+
+    @staticmethod
+    def _walk_find(node: "DeadlineNode", name: str) -> Optional["DeadlineNode"]:
+        """DFS search through the tree for a node with the given name."""
+        if node.name == name:
+            return node
+        for child in node.children:
+            hit = DeadlineTree._walk_find(child, name)
+            if hit is not None:
+                return hit
+        return None
 
     def active(self) -> list[DeadlineNode]:
         """All nodes still ACTIVE."""
@@ -181,7 +203,10 @@ class DeadlineTree:
         return [n for n in self._index.values() if n.is_expired(now_unix)]
 
     def cancel(self, name: str) -> int:
-        """Cancel a node by name. Returns count cancelled (or 0 if not found)."""
+        """Cancel a node by name. Returns count cancelled (or 0 if not found).
+
+        Will lazy-reindex if the node was added after tree construction.
+        """
         node = self.find(name)
         if node is None:
             return 0

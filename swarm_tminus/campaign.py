@@ -98,16 +98,29 @@ class Campaign:
         self._index[event.name] = event
 
     def add_edge(self, before: str, after: str) -> None:
-        """Add a (before, after) dependency. Raises if either side is unknown or a cycle forms."""
+        """Add a (before, after) dependency with atomic cycle detection.
+
+        The edge is added tentatively, then validated via topological sort.
+        If a cycle would form, the edge is rolled back and CycleError raised.
+
+        Raises:
+            KeyError: if either `before` or `after` is not a known event.
+            ValueError: if `before == after` (self-edge).
+            CycleError: if adding the edge would introduce a cycle.
+        """
         if before not in self._index:
             raise KeyError(f"unknown event {before!r}")
         if after not in self._index:
             raise KeyError(f"unknown event {after!r}")
         if before == after:
             raise ValueError(f"self-edge not allowed: {before!r}")
-        # Cycle check: would `after → before` already exist? Or any path?
-        # Cheap: just try to add and topo-sort
+        # Tentatively add, validate, and revert on cycle.
         self.edges.append((before, after))
+        try:
+            self.topological_order()
+        except CycleError:
+            self.edges.pop()
+            raise
 
     def add_edge_force(self, before: str, after: str) -> None:
         """Add edge and validate via topo sort; raises CycleError on cycle.

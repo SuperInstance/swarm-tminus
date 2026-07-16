@@ -131,6 +131,45 @@ class TestFormatTiles(unittest.TestCase):
         self.assertIn("<room>A</room>", out)
         self.assertIn("<room>B</room>", out)
 
+    def test_08_room_tags_are_balanced(self):
+        """Regression: room open/close tags must be balanced for any number of domains."""
+        import re
+        tiles = [
+            Tile(domain=f"d{i}", question=f"Q{i}", answer=f"A{i}",
+                 confidence=0.5 + i * 0.1)
+            for i in range(5)
+        ]
+        out = format_tiles_as_context(tiles)
+        opens = len(re.findall(r"<room>", out))
+        closes = len(re.findall(r"</room>", out))
+        self.assertEqual(opens, closes,
+                         f"unbalanced room tags: {opens} opens, {closes} closes")
+
+    def test_09_source_preserved_through_truncation(self):
+        """Regression: source field must survive truncation."""
+        tiles = [
+            Tile(domain="d", question=f"Q{i}", answer=f"A{i}",
+                 confidence=0.5 + i * 0.05, source=f"src{i}")
+            for i in range(20)
+        ]
+        # Force truncation.
+        out = format_tiles_as_context(tiles, max_chars=500)
+        # At least one source line should still be present.
+        self.assertIn("source:", out,
+                      "source field lost during truncation")
+
+    def test_10_indentation_uniform(self):
+        """Regression: all tile content lines should have the same indent."""
+        tiles = [Tile(domain="d", question="Q", answer="A", confidence=0.9,
+                      tags=("t",), source="s")]
+        out = format_tiles_as_context(tiles)
+        # Every tile content line should start with exactly 4 spaces.
+        for line in out.splitlines():
+            if "Q:" in line or "A:" in line or "confidence:" in line:
+                stripped_indent = len(line) - len(line.lstrip(" "))
+                self.assertEqual(stripped_indent, 4,
+                                 f"non-uniform indent in: {line!r}")
+
 
 class TestFetchFleetContext(unittest.TestCase):
     def test_01_returns_empty_on_connection_refused(self):

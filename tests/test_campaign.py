@@ -96,10 +96,23 @@ class TestCampaign(unittest.TestCase):
         c = Campaign(name="c")
         c.add_event(CountdownEvent(name="a", fire_at_unix=100.0))
         c.add_event(CountdownEvent(name="b", fire_at_unix=200.0))
+        # add_edge now does atomic cycle detection — this should raise.
+        with self.assertRaises(CycleError):
+            c.add_edge("a", "b")
+            c.add_edge("b", "a")
+
+    def test_add_edge_rejects_cycle_atomically(self):
+        """Regression: add_edge must reject cycles AND roll back the edge."""
+        c = Campaign(name="c")
+        c.add_event(CountdownEvent(name="a", fire_at_unix=1.0))
+        c.add_event(CountdownEvent(name="b", fire_at_unix=2.0))
+        c.add_event(CountdownEvent(name="c_node", fire_at_unix=3.0))
         c.add_edge("a", "b")
-        # Manually add a cycle edge to bypass the cycle check on add
-        c.edges.append(("b", "a"))
-        self.assertFalse(c.cycle_check())
+        c.add_edge("b", "c_node")
+        with self.assertRaises(CycleError):
+            c.add_edge("c_node", "a")
+        # The cyclic edge must NOT be in the list after rollback.
+        self.assertEqual(c.edges, [("a", "b"), ("b", "c_node")])
 
     def test_get(self):
         c = self._build_campaign()

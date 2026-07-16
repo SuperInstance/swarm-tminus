@@ -2,7 +2,7 @@
 
 > Time-shaped coordination primitives for [swarm-anchor](https://github.com/SuperInstance/swarm-anchor)-style multi-agent systems.
 
-[![Tests](https://img.shields.io/badge/tests-230%20passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-300%20passing-brightgreen)](#tests)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](#)
 [![Deps](https://img.shields.io/badge/dependencies-stdlib%20only-success)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#)
@@ -177,15 +177,16 @@ Example: an agent's heartbeat cadence driven by a `TickClock`:
 
 ```python
 from swarm_tminus import TickClock
-from swarm_anchor import Heartbeat
+from swarm_anchor import Anchor, Heartbeat, HeartbeatStatus
+
+anchor = Anchor(root=".swarm")
+hb = Heartbeat(animal="alice", task="rolling forecast")
 
 clock = TickClock(bpm=120.0)
-hb = Heartbeat(agent_id="alice")
-
 while True:
     tick = clock.next_tick()
-    hb.update()
-    hb.save(".swarm")
+    hb.touch()
+    anchor.heartbeat(hb)
     time.sleep(tick.delta)
 ```
 
@@ -261,7 +262,7 @@ camp.save(".swarm")
 $ /usr/bin/python3.11 -m unittest discover tests
 ......................................................................................................................................................................................................................................................................
 ----------------------------------------------------------------------
-Ran 294 tests in 0.035s
+Ran 300 tests in 0.037s
 
 OK
 ```
@@ -272,15 +273,15 @@ Test breakdown:
 |--------|-------|------|
 | predictor | 41 | tests/test_predictor.py |
 | events | 30 | tests/test_events.py |
-| deadlines | 26 | tests/test_deadlines.py |
+| deadlines | 28 | tests/test_deadlines.py |
 | rate | 35 | tests/test_rate.py |
 | tempo | 34 | tests/test_tempo.py |
 | cron | 24 | tests/test_cron.py |
-| campaign | 18 | tests/test_campaign.py |
+| campaign | 20 | tests/test_campaign.py |
 | matcher | 22 | tests/test_matcher.py |
 | casting | 21 | tests/test_casting.py |
 | hybrid | 22 | tests/test_hybrid.py |
-| context | 21 | tests/test_context.py |
+| context | 23 | tests/test_context.py |
 
 ## Source provenance
 
